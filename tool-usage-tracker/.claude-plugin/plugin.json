@@ -1,7 +1,7 @@
 {
   "name": "tool-usage-tracker",
   "description": "Log Skill, Agent, and slash-command invocations to a local JSONL file and report on usage over time.",
-  "version": "0.1.3",
+  "version": "0.2.0",
   "author": {
     "name": "Bernard Coulombel"
   },
