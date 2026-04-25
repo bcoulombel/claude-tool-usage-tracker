@@ -70,10 +70,14 @@ At ~100 tool calls/day this comes out to roughly 1 MB/month — negligible. No r
 
 ## Requirements
 
-- macOS or Linux with `python3` on `PATH` (built into macOS; standard on most Linux distros)
-- Claude Code with plugin support
+- **`python3` on `PATH`** — both the hook and the report script are written in Python 3 using only the standard library (no `pip install` needed).
+  - **macOS 12.3+**: ships with `/usr/bin/python3` out of the box. Nothing to do.
+  - **Older macOS**: install via `brew install python` or Xcode Command Line Tools.
+  - **Linux**: `python3` is included on all major distros (Ubuntu, Debian, Fedora, Arch, Alpine).
+  - **Windows**: untested. The hook command is `python3 ...` which usually doesn't resolve on Windows out of the box — you'd need to alias `python3` or edit `hooks/hooks.json`.
+- **Claude Code** with plugin support (recent versions).
 
-No package installs needed — everything is stdlib Python.
+If `python3` is missing, the hook fails silently and your tool calls keep working as normal — you just won't get any logs until it's available.
 
 ## Uninstall
 
