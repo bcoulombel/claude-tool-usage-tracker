@@ -6,24 +6,10 @@ Built because Claude's built-in analytics dashboards (Team / Enterprise) don't b
 
 ## What it does
 
-Three things get tracked, all to one local JSONL file:
+Two things:
 
-- **`Skill` tool calls** — when Claude decides to invoke a skill mid-conversation. Captured by a `PreToolUse` hook.
-- **Subagent runs** (built-in `Explore`/`Plan`/`general-purpose` and custom `.claude/agents/*.md`). Captured by a `SubagentStop` hook that fires once per subagent completion. More reliable than `PreToolUse` on the `Agent` tool, which empirically misses custom subagents.
-- **Slash commands** typed by you (`/lnb-review-pr`, `/plugin`, etc.) — these expand inline and don't go through the Skill tool, so they're caught by a separate `UserPromptSubmit` hook.
-
-All three append to:
-```
-~/.claude/local-telemetry/tools/YYYY-MM.jsonl
-```
-One file per month. Plain text. Stays on your machine — never uploaded.
-
-The bundled **`skill-usage-tracker` skill** runs an aggregation script and prints a markdown report:
-
-- **Used tools** (always shown) — grouped by Type (`agent` → `skill` → `slash-cmd`), sorted by count.
-- **Unused tools** (opt-in, ask for it) — every Skill/Agent/slash-command found on disk (in `~/.claude/`, the plugin cache, and `<cwd>/.claude/`) that wasn't invoked in the period, with one-liner descriptions pulled from each tool's frontmatter. Off by default because the list is long; ask the skill for "unused tools" or "what haven't I used" to include it.
-
-Period accepts `all` or any `<N>[h|d|w|m]` (e.g. `1h`, `1d`, `7d`, `14d`, `30d`, `2w`, `3m`). Default: `30d`.
+1. **Tracks** every `Skill` tool call, every subagent run, and every slash command — silently, in the background, via Claude Code hooks. Each invocation gets one line in a local JSONL log.
+2. **Reports** on the log on demand. Ask Claude for a usage report and it runs the bundled `skill-usage-tracker` skill, which prints a markdown table of which tools you used and how often, over any time window you ask for. Optionally, a second table lists every available tool you haven't touched.
 
 ## Install
 
@@ -44,7 +30,9 @@ To update later: `/plugin marketplace update bcoulombel` then `/plugin install t
 
 ## Use
 
-Just ask Claude in any session:
+Two ways to trigger a report — pick whichever feels natural.
+
+**Natural language.** Just describe what you want in any session:
 
 > Show me a tool usage report for the last 7 days
 
@@ -52,7 +40,18 @@ Just ask Claude in any session:
 
 > What agents have I used this month?
 
-The skill recognises the period in plain English, runs the report script, and prints something like:
+> What skills haven't I used this month?
+
+Claude recognises the time window, runs the report script with the right period, and adds `--unused` only when you explicitly ask about untouched tools.
+
+**Slash command.** Invoke the skill directly with arguments:
+
+```
+/tool-usage-tracker:skill-usage-tracker report 7d
+/tool-usage-tracker:skill-usage-tracker report 30d --unused
+```
+
+Either way, you get back something like:
 
 ```
 # Tool usage — last 30 days
@@ -83,7 +82,15 @@ Ask for unused explicitly ("what haven't I used this month?") and you also get:
 ...
 ```
 
-## Storage
+## How tracking works
+
+Three Claude Code hooks feed the log, each handling a different event:
+
+- **`Skill` tool calls** — when Claude decides to invoke a skill mid-conversation. Captured by a `PreToolUse` hook.
+- **Subagent runs** (built-in `Explore`/`Plan`/`general-purpose` and custom `.claude/agents/*.md`). Captured by a `SubagentStop` hook that fires once per subagent completion. More reliable than `PreToolUse` on the `Agent` tool, which empirically misses custom subagents.
+- **Slash commands** typed by you (`/lnb-review-pr`, `/plugin`, etc.) — these expand inline and don't go through the Skill tool, so they're caught by a separate `UserPromptSubmit` hook.
+
+All three append to one local file, one per month:
 
 ```
 ~/.claude/local-telemetry/
@@ -93,7 +100,7 @@ Ask for unused explicitly ("what haven't I used this month?") and you also get:
     └── ...
 ```
 
-Each line is one invocation. Three shapes:
+Plain text. Stays on your machine — never uploaded. Each line is one invocation, in one of three shapes:
 
 ```json
 {"ts":"...","tool":"Skill","skill":"lnb-build-frontend","subagent":null,"slash_command":null, ...}
@@ -102,6 +109,15 @@ Each line is one invocation. Three shapes:
 ```
 
 At ~100 tool calls/day this comes out to roughly 1 MB/month — negligible. No rotation needed; old months are kept indefinitely so all-time reports work.
+
+## Report shape
+
+The `skill-usage-tracker` skill prints up to two markdown tables:
+
+- **Used tools** (always shown) — grouped by Type (`agent` → `skill` → `slash-cmd`), sorted by count.
+- **Unused tools** (opt-in) — every Skill/Agent/slash-command found on disk (in `~/.claude/`, the plugin cache, and `<cwd>/.claude/`) that wasn't invoked in the period, with one-liner descriptions pulled from each tool's frontmatter. Off by default because the list is long; ask the skill for "unused tools" or "what haven't I used" — or pass `--unused` to the slash form — to include it.
+
+Period accepts `all` or any `<N>[h|d|w|m]` (e.g. `1h`, `1d`, `7d`, `14d`, `30d`, `2w`, `3m`). Default: `30d`.
 
 ## Requirements
 
