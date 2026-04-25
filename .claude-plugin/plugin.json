@@ -1,0 +1,5 @@
+{
+  "name": "tool-usage-tracker",
+  "description": "Log every Skill and Agent (Task) tool invocation to a local JSONL file and report on usage over time.",
+  "version": "0.1.0"
+}

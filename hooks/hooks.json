@@ -1,0 +1,17 @@
+{
+  "description": "Append every Skill and Task tool call to a local JSONL log.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill|Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/bin/log-tool-usage.sh",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
