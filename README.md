@@ -1,4 +1,4 @@
-# tool-usage-tracker
+# claude-tool-usage-tracker
 
 A small Claude Code plugin that logs every `Skill` and `Agent` (subagent/Task) tool invocation to a local JSONL file, and ships a skill that turns the log into an on-demand markdown report.
 
