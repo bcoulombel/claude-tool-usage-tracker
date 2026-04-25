@@ -1,18 +1,18 @@
 ---
 name: skill-usage-tracker
-description: Report on Skill, Agent, and slash-command usage tracked by the tool-usage-tracker plugin. Use when the user asks for a usage report, "top skills", activity over a period (any duration — 1h, 1d, 7d, 30d, 2w, 3m, all), or wants to see which available tools they haven't used.
+description: Report on Skill, Agent, and slash-command usage tracked by the tool-usage-tracker plugin. Use when the user asks for a usage report, "top skills", activity over a period (any duration — 1h, 1d, 7d, 30d, 2w, 3m, all), or wants to see which available tools they haven't used. Supports filtering by type (skill/agent/slash-cmd) and showing only the unused list.
 ---
 
 # skill-usage-tracker
 
-Aggregates the JSONL files written by the `tool-usage-tracker` plugin's hooks and prints a markdown report. By default, only the **used tools** table is shown. Pass `--unused` to also list available tools that weren't invoked in the period (descriptions are truncated to a one-liner).
+Aggregates the JSONL files written by the `tool-usage-tracker` plugin's hooks and prints a markdown report. By default, only the **used tools** table is shown. Pass `--unused` to add the unused-tools list, `--only-unused` to drop the used-tools table entirely, and `--type=<kind>` to filter both tables to a single kind.
 
 ## How to use
 
 Run the bundled report script:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/bin/report.py" [period] [--unused]
+python3 "${CLAUDE_PLUGIN_ROOT}/bin/report.py" [period] [--unused | --only-unused] [--type=skill|agent|slash-cmd]
 ```
 
 ### `period`
@@ -30,19 +30,38 @@ python3 "${CLAUDE_PLUGIN_ROOT}/bin/report.py" [period] [--unused]
 
 The script accepts any value matching `all` or `^\d+[hdwm]$`. Default if no period is given: `30d`.
 
-### `--unused` (opt-in)
+### `--unused` and `--only-unused` (opt-in)
 
-Pass `--unused` ONLY when the user explicitly asks about unused/untouched/never-invoked tools. Default reports do NOT include this section because it's long.
+- `--unused` — keeps the used-tools table, appends the unused-tools table.
+- `--only-unused` — suppresses the used-tools table; prints only the unused list. Implies `--unused`.
 
-Trigger phrases that should add `--unused`:
+Pass these ONLY when the user explicitly asks about unused/untouched/never-invoked tools. Default reports do NOT include the unused list because it's long.
+
+Trigger phrases that should add `--unused` (keep the used table):
 - "what haven't I used?"
-- "show unused tools"
 - "what tools haven't I tried?"
-- "list every available skill"
 - "include unused"
 - "full report"
 
-If the user just says "show me a usage report" or asks for top skills, leave it OFF.
+Trigger phrases that should add `--only-unused` (drop the used table):
+- "show unused tools" / "show me the unused"
+- "list every skill I've never invoked"
+- "just the unused" / "only unused"
+- "list every available X"
+
+If the user just says "show me a usage report" or asks for top skills, leave both OFF.
+
+### `--type=<kind>` (filter)
+
+Apply this filter when the user mentions one specific kind: `skill`, `agent`, or `slash-cmd`. Filters BOTH tables (used + unused) to that kind only.
+
+Trigger phrases:
+- "show unused **skills**" → `--type=skill`
+- "what **agents** have I used?" → `--type=agent`
+- "**slash command** usage" → `--type=slash-cmd`
+- "skill usage" / "skills only" / "agents only"
+
+If the user says "tools" or doesn't specify a kind, do NOT pass `--type`.
 
 Pass the script's stdout through to the user as-is — it's already formatted markdown.
 
@@ -51,18 +70,23 @@ Pass the script's stdout through to the user as-is — it's already formatted ma
 | User asks | Command |
 |---|---|
 | "show me a usage report" | `report.py 30d` |
-| "what skills did I use this week?" | `report.py 7d` |
-| "skill usage in the last hour" | `report.py 1h` |
-| "top skills all-time" | `report.py all` |
-| "what skills haven't I tried in the last month?" | `report.py 30d --unused` |
+| "what skills did I use this week?" | `report.py 7d --type=skill` |
+| "what agents have I used this month?" | `report.py 30d --type=agent` |
+| "skill usage in the last hour" | `report.py 1h --type=skill` |
+| "top skills all-time" | `report.py all --type=skill` |
+| "what skills haven't I tried in the last month?" | `report.py 30d --unused --type=skill` |
+| "show unused skills" | `report.py 30d --only-unused --type=skill` |
+| "show unused tools" | `report.py 30d --only-unused` |
+| "list every skill I've never invoked" | `report.py all --only-unused --type=skill` |
 | "full usage report for the week, including unused" | `report.py 7d --unused` |
-| "list every skill I've never invoked" | `report.py all --unused` |
 
 ## Output structure
 
-1. **Used tools** — `Type | Name | Count`, grouped by Type in this order: `agent`, `skill`, `slash-cmd`. Within each Type, sorted by Count descending. Always shown.
+1. **Used tools** — `Type | Name | Count`, grouped by Type in this order: `agent`, `skill`, `slash-cmd`. Within each Type, sorted by Count descending. Shown unless `--only-unused` is passed.
 
-2. **Unused tools — available but not invoked in <period>** — `Type | Name | Description`. Same Type grouping; alphabetical within each group. Descriptions truncated to a one-liner (first sentence, max 100 chars). Only shown when `--unused` is passed.
+2. **Unused tools — available but not invoked in <period>** — `Type | Name | Description`. Same Type grouping; alphabetical within each group. Descriptions truncated to a one-liner (first sentence, max 100 chars). Only shown when `--unused` or `--only-unused` is passed.
+
+When `--type=<kind>` is passed, both tables are filtered to that kind only and the title gets a `(<kind> only)` suffix.
 
    "Available" = present on disk in any of:
    - `~/.claude/{skills,agents,commands}/`

@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 """Aggregate ~/.claude/local-telemetry/tools/*.jsonl and print a markdown report.
 
-Usage: report.py [period] [--unused]
-  period:    'all' or <N>[h|d|w|m]   (default: 30d)
-  --unused:  also print the unused-tools table (off by default)
+Usage: report.py [period] [--unused | --only-unused] [--type=<kind>]
+  period:        'all' or <N>[h|d|w|m]   (default: 30d)
+  --unused:      also print the unused-tools table (off by default)
+  --only-unused: print ONLY the unused-tools table (implies --unused)
+  --type=<kind>: filter both tables to one kind: skill | agent | slash-cmd
 
   Examples:
-    report.py 7d                used-tools table only
-    report.py 7d --unused       used + unused tables
-    report.py all --unused      everything ever, plus what's never been touched
+    report.py 7d                                used-tools table only
+    report.py 7d --unused                       used + unused tables
+    report.py 30d --only-unused --type=skill    just unused skills, last 30d
+    report.py all --type=agent                  agent usage all-time
+    report.py all --unused                      everything ever, plus what's never been touched
 
 The unused-tools table is opt-in because it's long. Descriptions in that
 table are truncated to a one-liner (first sentence, capped at 100 chars).
@@ -298,13 +302,16 @@ def normalize_counts(counts, skills, agents, commands):
     return out
 
 
-def render_usage_table(counts):
+def render_usage_table(counts, type_filter=None):
     print('| Type | Name | Count |')
     print('|------|------|------:|')
     grouped = defaultdict(list)
     for (kind, name), n in counts.items():
+        if type_filter is not None and kind != type_filter:
+            continue
         grouped[kind].append((name, n))
-    for kind in TYPE_ORDER:
+    types = [type_filter] if type_filter else TYPE_ORDER
+    for kind in types:
         rows = sorted(grouped.get(kind, []), key=lambda r: (-r[1], r[0]))
         for name, n in rows:
             print(f'| {kind} | {name} | {n} |')
@@ -314,21 +321,24 @@ def _is_used(kind, payload, counts):
     return any((kind, alias) in counts for alias in payload['aliases'])
 
 
-def render_unused_table(skills, agents, commands, counts):
+def render_unused_table(skills, agents, commands, counts, type_filter=None):
     items = []
-    for name, payload in skills.items():
-        if not _is_used('skill', payload, counts):
-            items.append(('skill', name, payload['description']))
-    for name, payload in agents.items():
-        if not _is_used('agent', payload, counts):
-            items.append(('agent', name, payload['description']))
-    for name, payload in commands.items():
-        if not _is_used('slash-cmd', payload, counts):
-            items.append(('slash-cmd', name, payload['description']))
+    if type_filter in (None, 'skill'):
+        for name, payload in skills.items():
+            if not _is_used('skill', payload, counts):
+                items.append(('skill', name, payload['description']))
+    if type_filter in (None, 'agent'):
+        for name, payload in agents.items():
+            if not _is_used('agent', payload, counts):
+                items.append(('agent', name, payload['description']))
+    if type_filter in (None, 'slash-cmd'):
+        for name, payload in commands.items():
+            if not _is_used('slash-cmd', payload, counts):
+                items.append(('slash-cmd', name, payload['description']))
     type_rank = {k: i for i, k in enumerate(TYPE_ORDER)}
     items.sort(key=lambda r: (type_rank.get(r[0], 99), r[1].lower()))
     if not items:
-        print('_No unused tools — every available tool was invoked at least once._')
+        print('_No unused tools in this scope — every available tool was invoked at least once._')
         return
     print('| Type | Name | Description |')
     print('|------|------|-------------|')
@@ -338,16 +348,31 @@ def render_unused_table(skills, agents, commands, counts):
 
 # -- Main --------------------------------------------------------------------
 
+VALID_TYPES = {'skill', 'agent', 'slash-cmd'}
+
+
 def main(argv):
     args = [a for a in argv[1:] if a]
     show_unused = False
+    only_unused = False
+    type_filter = None
     period = '30d'
     seen_period = False
     for arg in args:
         if arg in ('--unused', '-u'):
             show_unused = True
+        elif arg in ('--only-unused',):
+            show_unused = True
+            only_unused = True
         elif arg in ('--no-unused',):
             show_unused = False
+            only_unused = False
+        elif arg.startswith('--type='):
+            value = arg.split('=', 1)[1]
+            if value not in VALID_TYPES:
+                print(f'Unknown --type value: {value} (expected: {", ".join(sorted(VALID_TYPES))})', file=sys.stderr)
+                return 1
+            type_filter = value
         elif not seen_period:
             period = arg
             seen_period = True
@@ -374,25 +399,31 @@ def main(argv):
     commands = discover_commands(cwd)
     counts = normalize_counts(counts, skills, agents, commands)
 
-    print(f'# Tool usage — {label}')
+    title_suffix = f' — {label}'
+    if type_filter is not None:
+        title_suffix += f' ({type_filter} only)'
+    print(f'# Tool usage{title_suffix}')
     print()
-    if not has_files:
-        print(f'No usage logs found in {log_dir} yet.')
-        print('The hooks will populate logs on the next Skill, Agent, or slash-command invocation.')
-        print()
-    else:
-        render_usage_table(counts)
-        print()
-        print(f'_Total invocations: {total} — source: `{log_dir}`_')
-        print()
+
+    if not only_unused:
+        if not has_files:
+            print(f'No usage logs found in {log_dir} yet.')
+            print('The hooks will populate logs on the next Skill, Agent, or slash-command invocation.')
+            print()
+        else:
+            render_usage_table(counts, type_filter)
+            print()
+            print(f'_Total invocations: {total} — source: `{log_dir}`_')
+            print()
 
     if show_unused:
-        print(f'## Unused tools — available but not invoked in {label}')
+        scope_note = f' ({type_filter} only)' if type_filter else ''
+        print(f'## Unused tools{scope_note} — available but not invoked in {label}')
         print()
         print(f'_Discovered from `~/.claude/`, plugin cache, and `{cwd}/.claude/`._')
         print()
-        render_unused_table(skills, agents, commands, counts)
-    else:
+        render_unused_table(skills, agents, commands, counts, type_filter)
+    elif not only_unused:
         print('_Pass `--unused` to also list available tools that were not invoked in this period._')
 
     return 0
