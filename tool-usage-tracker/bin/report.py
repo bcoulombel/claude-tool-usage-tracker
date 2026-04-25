@@ -180,8 +180,13 @@ def _merge(out, entry):
 
 
 def discover_skills(cwd):
-    """Skill canonical name = directory name (matches what the harness exposes,
-    since some skill files use a bare `name:` that doesn't include a parent prefix)."""
+    """Skill canonical name = directory name (matches what the harness exposes).
+
+    Aliases are ONLY the canonical name itself and, for plugin skills, the
+    `<plugin>:<canonical>` form. The frontmatter `name:` field is intentionally
+    NOT aliased — some skills (e.g. gstack-*) use a bare `name:` for internal
+    naming that does NOT match what the harness invokes them as, so trusting it
+    would collapse genuinely-different tools into one row."""
     out = {}
     plugin_cache = Path.home() / '.claude' / 'plugins' / 'cache'
 
@@ -189,19 +194,13 @@ def discover_skills(cwd):
         for skill_md in _glob_all([root], '*/SKILL.md'):
             fm = parse_frontmatter(skill_md)
             canonical = skill_md.parent.name
-            aliases = {canonical}
-            if fm.get('name'):
-                aliases.add(fm['name'])
-            _merge(out, _index_entry(canonical, aliases, fm.get('description', '')))
+            _merge(out, _index_entry(canonical, {canonical}, fm.get('description', '')))
 
     for skill_md in _glob_all([plugin_cache], '*/*/*/skills/*/SKILL.md'):
         fm = parse_frontmatter(skill_md)
         canonical = skill_md.parent.name
         plugin_name = skill_md.parents[3].name
         aliases = {canonical, f'{plugin_name}:{canonical}'}
-        if fm.get('name'):
-            aliases.add(fm['name'])
-            aliases.add(f'{plugin_name}:{fm["name"]}')
         _merge(out, _index_entry(canonical, aliases, fm.get('description', '')))
 
     return out
@@ -215,18 +214,13 @@ def discover_agents(cwd):
         for agent_md in _glob_all([root], '*.md'):
             fm = parse_frontmatter(agent_md)
             canonical = agent_md.stem
-            aliases = {canonical}
-            if fm.get('name'):
-                aliases.add(fm['name'])
-            _merge(out, _index_entry(canonical, aliases, fm.get('description', '')))
+            _merge(out, _index_entry(canonical, {canonical}, fm.get('description', '')))
 
     for agent_md in _glob_all([plugin_cache], '*/*/*/agents/*.md'):
         fm = parse_frontmatter(agent_md)
         canonical = agent_md.stem
         plugin_name = agent_md.parents[2].name
         aliases = {canonical, f'{plugin_name}:{canonical}'}
-        if fm.get('name'):
-            aliases.add(fm['name'])
         _merge(out, _index_entry(canonical, aliases, fm.get('description', '')))
 
     return out
@@ -240,18 +234,13 @@ def discover_commands(cwd):
         for cmd_md in _glob_all([root], '*.md'):
             fm = parse_frontmatter(cmd_md)
             canonical = cmd_md.stem
-            aliases = {canonical}
-            if fm.get('name'):
-                aliases.add(fm['name'])
-            _merge(out, _index_entry(canonical, aliases, fm.get('description', '')))
+            _merge(out, _index_entry(canonical, {canonical}, fm.get('description', '')))
 
     for cmd_md in _glob_all([plugin_cache], '*/*/*/commands/*.md'):
         fm = parse_frontmatter(cmd_md)
         canonical = cmd_md.stem
         plugin_name = cmd_md.parents[2].name
         aliases = {canonical, f'{plugin_name}:{canonical}'}
-        if fm.get('name'):
-            aliases.add(fm['name'])
         _merge(out, _index_entry(canonical, aliases, fm.get('description', '')))
 
     return out
@@ -278,6 +267,35 @@ def _to_oneliner(desc):
     if len(sentence) > ONELINER_MAX:
         sentence = sentence[:ONELINER_MAX - 1].rstrip() + '…'
     return sentence
+
+
+def _alias_map(index):
+    """Flatten a discovery index to {alias_name: canonical_name}."""
+    out = {}
+    for canonical, payload in index.items():
+        for alias in payload['aliases']:
+            out[alias] = canonical
+    return out
+
+
+def normalize_counts(counts, skills, agents, commands):
+    """Collapse alias names (e.g. `<plugin>:<name>`) to their canonical name
+    using the disk discovery, so the used-tools table shows one row per tool
+    even when the same skill was invoked via multiple aliases.
+
+    Slash-commands can come from a `commands/*.md` file OR from any skill
+    (every skill is invokable as `/<name>` or `/<plugin>:<name>`), so the
+    slash-cmd alias map is the union of both."""
+    aliases_by_kind = {
+        'skill': _alias_map(skills),
+        'agent': _alias_map(agents),
+        'slash-cmd': {**_alias_map(commands), **_alias_map(skills)},
+    }
+    out = Counter()
+    for (kind, name), n in counts.items():
+        canonical = aliases_by_kind.get(kind, {}).get(name, name)
+        out[(kind, canonical)] += n
+    return out
 
 
 def render_usage_table(counts):
@@ -348,6 +366,14 @@ def main(argv):
 
     counts, total, log_dir, has_files = aggregate_logs(cutoff_iso)
 
+    # Discovery is needed both to canonicalize log entries (collapse plugin-
+    # namespaced aliases into a single row) and to render the unused table.
+    cwd = Path.cwd()
+    skills = discover_skills(cwd)
+    agents = discover_agents(cwd)
+    commands = discover_commands(cwd)
+    counts = normalize_counts(counts, skills, agents, commands)
+
     print(f'# Tool usage — {label}')
     print()
     if not has_files:
@@ -361,10 +387,6 @@ def main(argv):
         print()
 
     if show_unused:
-        cwd = Path.cwd()
-        skills = discover_skills(cwd)
-        agents = discover_agents(cwd)
-        commands = discover_commands(cwd)
         print(f'## Unused tools — available but not invoked in {label}')
         print()
         print(f'_Discovered from `~/.claude/`, plugin cache, and `{cwd}/.claude/`._')
