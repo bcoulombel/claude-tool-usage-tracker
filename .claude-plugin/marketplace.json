@@ -1,0 +1,13 @@
+{
+  "name": "bcoulombel",
+  "owner": {
+    "name": "bcoulombel"
+  },
+  "plugins": [
+    {
+      "name": "tool-usage-tracker",
+      "source": ".",
+      "description": "Track Claude Code Skill and Agent tool usage and report on it."
+    }
+  ]
+}

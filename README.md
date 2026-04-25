@@ -16,13 +16,20 @@ Built because Claude's built-in analytics dashboards (Team / Enterprise) don't b
 
 ## Install
 
-From inside Claude Code:
+From inside Claude Code, add this repo as a marketplace, then install the plugin from it:
 
 ```
-/plugin install <owner>/<repo>
+/plugin marketplace add bcoulombel/claude-tool-usage-tracker
+/plugin install tool-usage-tracker@bcoulombel
 ```
 
-(replace with the GitHub `owner/repo` where this is hosted)
+Verify with:
+
+```
+/plugin list
+```
+
+To update later: `/plugin marketplace update bcoulombel` then `/plugin install tool-usage-tracker@bcoulombel` again.
 
 ## Use
 
