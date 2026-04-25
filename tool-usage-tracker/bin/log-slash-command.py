@@ -35,13 +35,14 @@ def main() -> int:
 
         entry = {
             'ts': now.strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'cwd': os.getcwd(),
-            'session_id': data.get('session_id'),
             'tool': 'SlashCommand',
+            'event': 'UserPromptSubmit',
             'skill': None,
             'subagent': None,
             'slash_command': match.group(1),
             'description': None,
+            'cwd': os.getcwd(),
+            'session_id': data.get('session_id'),
         }
 
         with log_file.open('a') as f:

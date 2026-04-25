@@ -41,15 +41,16 @@ def main() -> int:
 
         entry = {
             'ts': now.strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'cwd': os.getcwd(),
-            'session_id': data.get('session_id'),
-            'tool': 'SubagentStop',
+            'tool': 'Agent',
+            'event': 'SubagentStop',
             'skill': None,
             'subagent': agent_type,
             'slash_command': None,
             'description': None,
             'stop_reason': data.get('stop_reason'),
             'agent_id': data.get('agent_id'),
+            'cwd': os.getcwd(),
+            'session_id': data.get('session_id'),
         }
 
         with log_file.open('a') as f:

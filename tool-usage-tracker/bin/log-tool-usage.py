@@ -26,12 +26,13 @@ def main() -> int:
 
         entry = {
             'ts': now.strftime('%Y-%m-%dT%H:%M:%SZ'),
-            'cwd': os.getcwd(),
-            'session_id': data.get('session_id'),
             'tool': data.get('tool_name'),
+            'event': 'PreToolUse',
             'skill': tool_input.get('skill'),
             'subagent': tool_input.get('subagent_type'),
             'description': tool_input.get('description'),
+            'cwd': os.getcwd(),
+            'session_id': data.get('session_id'),
         }
 
         with log_file.open('a') as f:
