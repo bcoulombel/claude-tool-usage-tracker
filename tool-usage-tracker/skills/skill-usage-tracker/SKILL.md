@@ -5,17 +5,17 @@ description: Report on Skill, Agent, and slash-command usage tracked by the tool
 
 # skill-usage-tracker
 
-Aggregates the JSONL files written by the `tool-usage-tracker` plugin's hooks and prints a markdown report. Two tables: **used tools** (grouped by Type) and **unused tools** (available on disk but never invoked in the period).
+Aggregates the JSONL files written by the `tool-usage-tracker` plugin's hooks and prints a markdown report. By default, only the **used tools** table is shown. Pass `--unused` to also list available tools that weren't invoked in the period (descriptions are truncated to a one-liner).
 
 ## How to use
 
-Run the bundled report script with the requested period:
+Run the bundled report script:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/bin/report.py" [period]
+python3 "${CLAUDE_PLUGIN_ROOT}/bin/report.py" [period] [--unused]
 ```
 
-Where `period` is one of:
+### `period`
 
 | User says... | Pass... |
 |---|---|
@@ -28,25 +28,43 @@ Where `period` is one of:
 | "last 3 months" | `3m` |
 | any other duration | `<N>[h|d|w|m]` |
 
-The script accepts any value matching `all` or `^\d+[hdwm]$` — no need to constrain the user to fixed buckets. Default if no period is given: `30d`.
+The script accepts any value matching `all` or `^\d+[hdwm]$`. Default if no period is given: `30d`.
+
+### `--unused` (opt-in)
+
+Pass `--unused` ONLY when the user explicitly asks about unused/untouched/never-invoked tools. Default reports do NOT include this section because it's long.
+
+Trigger phrases that should add `--unused`:
+- "what haven't I used?"
+- "show unused tools"
+- "what tools haven't I tried?"
+- "list every available skill"
+- "include unused"
+- "full report"
+
+If the user just says "show me a usage report" or asks for top skills, leave it OFF.
 
 Pass the script's stdout through to the user as-is — it's already formatted markdown.
 
 ## Examples
 
-- "show me a usage report" → `report.py 30d`
-- "what skills did I use this week?" → `report.py 7d`
-- "skill usage in the last hour" → `report.py 1h`
-- "top skills all-time" → `report.py all`
-- "what skills haven't I tried in the last month?" → `report.py 30d` (the unused section answers this)
+| User asks | Command |
+|---|---|
+| "show me a usage report" | `report.py 30d` |
+| "what skills did I use this week?" | `report.py 7d` |
+| "skill usage in the last hour" | `report.py 1h` |
+| "top skills all-time" | `report.py all` |
+| "what skills haven't I tried in the last month?" | `report.py 30d --unused` |
+| "full usage report for the week, including unused" | `report.py 7d --unused` |
+| "list every skill I've never invoked" | `report.py all --unused` |
 
 ## Output structure
 
-The report has two sections:
+1. **Used tools** — `Type | Name | Count`, grouped by Type in this order: `agent`, `skill`, `slash-cmd`. Within each Type, sorted by Count descending. Always shown.
 
-1. **Used tools** — `Type | Name | Count`, grouped by Type in this order: `agent`, `skill`, `slash-cmd`. Within each Type, sorted by Count descending.
+2. **Unused tools — available but not invoked in <period>** — `Type | Name | Description`. Same Type grouping; alphabetical within each group. Descriptions truncated to a one-liner (first sentence, max 100 chars). Only shown when `--unused` is passed.
 
-2. **Unused tools — available but not invoked in <period>** — `Type | Name | Description`. Same Type grouping; alphabetical within each group. "Available" = present on disk in any of:
+   "Available" = present on disk in any of:
    - `~/.claude/{skills,agents,commands}/`
    - `~/.claude/plugins/cache/*/*/*/{skills,agents,commands}/`
    - `<cwd>/.claude/{skills,agents,commands}/` (current project)

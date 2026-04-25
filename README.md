@@ -18,10 +18,10 @@ All three append to:
 ```
 One file per month. Plain text. Stays on your machine — never uploaded.
 
-The bundled **`skill-usage-tracker` skill** runs an aggregation script and prints two markdown tables:
+The bundled **`skill-usage-tracker` skill** runs an aggregation script and prints a markdown report:
 
-1. **Used tools** — grouped by Type (`agent` → `skill` → `slash-cmd`), sorted by count.
-2. **Unused tools** — every Skill/Agent/slash-command found on disk (in `~/.claude/`, the plugin cache, and `<cwd>/.claude/`) that wasn't invoked in the period, with descriptions pulled from each tool's frontmatter.
+- **Used tools** (always shown) — grouped by Type (`agent` → `skill` → `slash-cmd`), sorted by count.
+- **Unused tools** (opt-in, ask for it) — every Skill/Agent/slash-command found on disk (in `~/.claude/`, the plugin cache, and `<cwd>/.claude/`) that wasn't invoked in the period, with one-liner descriptions pulled from each tool's frontmatter. Off by default because the list is long; ask the skill for "unused tools" or "what haven't I used" to include it.
 
 Period accepts `all` or any `<N>[h|d|w|m]` (e.g. `1h`, `1d`, `7d`, `14d`, `30d`, `2w`, `3m`). Default: `30d`.
 
@@ -68,12 +68,18 @@ The skill recognises the period in plain English, runs the report script, and pr
 
 _Total invocations: 187 — source: /Users/you/.claude/local-telemetry/tools_
 
+_Pass `--unused` to also list available tools that were not invoked in this period._
+```
+
+Ask for unused explicitly ("what haven't I used this month?") and you also get:
+
+```
 ## Unused tools — available but not invoked in last 30 days
 
 | Type | Name | Description |
 |------|------|-------------|
-| agent | lnb-rename-auditor | Catches missed references when a PR renames a symbol... |
-| skill | gstack-canary | Post-deploy canary monitoring... |
+| agent | lnb-rename-auditor | Catches missed references when a PR renames a symbol |
+| skill | gstack-canary | Post-deploy canary monitoring |
 ...
 ```
 

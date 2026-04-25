@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
 """Aggregate ~/.claude/local-telemetry/tools/*.jsonl and print a markdown report.
 
-Usage: report.py [period]
-  period: 'all' or <N>[h|d|w|m]   (default: 30d)
-  Examples: 1h, 6h, 1d, 7d, 14d, 30d, 2w, 3m, all
+Usage: report.py [period] [--unused]
+  period:    'all' or <N>[h|d|w|m]   (default: 30d)
+  --unused:  also print the unused-tools table (off by default)
 
-The report has two tables:
-  1. Used tools — grouped by Type (agent, skill, slash-cmd), Count desc within group.
-  2. Unused tools — discovered on disk but not invoked in the period, alphabetical
-     within each Type group, with a Description column.
+  Examples:
+    report.py 7d                used-tools table only
+    report.py 7d --unused       used + unused tables
+    report.py all --unused      everything ever, plus what's never been touched
+
+The unused-tools table is opt-in because it's long. Descriptions in that
+table are truncated to a one-liner (first sentence, capped at 100 chars).
 
 Discovery roots for unused tools (option B from the spec):
   - ~/.claude/{skills,agents,commands}/
@@ -260,6 +263,23 @@ def _escape_cell(s):
     return s.replace('|', '\\|').replace('\n', ' ').strip()
 
 
+ONELINER_MAX = 100
+
+
+def _to_oneliner(desc):
+    """Collapse a description to a single short sentence: first sentence, capped
+    at ONELINER_MAX chars with an ellipsis if it overflows."""
+    if not desc:
+        return ''
+    flat = ' '.join(desc.split())  # collapse all whitespace runs
+    # Take everything up to the first ". " (sentence end). Skip trailing period.
+    end = flat.find('. ')
+    sentence = flat[:end] if end != -1 else flat.rstrip('.')
+    if len(sentence) > ONELINER_MAX:
+        sentence = sentence[:ONELINER_MAX - 1].rstrip() + '…'
+    return sentence
+
+
 def render_usage_table(counts):
     print('| Type | Name | Count |')
     print('|------|------|------:|')
@@ -295,13 +315,28 @@ def render_unused_table(skills, agents, commands, counts):
     print('| Type | Name | Description |')
     print('|------|------|-------------|')
     for kind, name, desc in items:
-        print(f'| {kind} | {name} | {_escape_cell(desc)} |')
+        print(f'| {kind} | {name} | {_escape_cell(_to_oneliner(desc))} |')
 
 
 # -- Main --------------------------------------------------------------------
 
 def main(argv):
-    period = argv[1] if len(argv) > 1 else '30d'
+    args = [a for a in argv[1:] if a]
+    show_unused = False
+    period = '30d'
+    seen_period = False
+    for arg in args:
+        if arg in ('--unused', '-u'):
+            show_unused = True
+        elif arg in ('--no-unused',):
+            show_unused = False
+        elif not seen_period:
+            period = arg
+            seen_period = True
+        else:
+            print(f'Unexpected argument: {arg}', file=sys.stderr)
+            return 1
+
     delta, label = parse_period(period)
     if delta is False:
         print(label, file=sys.stderr)
@@ -312,10 +347,6 @@ def main(argv):
         cutoff_iso = (datetime.now(timezone.utc) - delta).strftime('%Y-%m-%dT%H:%M:%SZ')
 
     counts, total, log_dir, has_files = aggregate_logs(cutoff_iso)
-    cwd = Path.cwd()
-    skills = discover_skills(cwd)
-    agents = discover_agents(cwd)
-    commands = discover_commands(cwd)
 
     print(f'# Tool usage — {label}')
     print()
@@ -329,11 +360,18 @@ def main(argv):
         print(f'_Total invocations: {total} — source: `{log_dir}`_')
         print()
 
-    print(f'## Unused tools — available but not invoked in {label}')
-    print()
-    print(f'_Discovered from `~/.claude/`, plugin cache, and `{cwd}/.claude/`._')
-    print()
-    render_unused_table(skills, agents, commands, counts)
+    if show_unused:
+        cwd = Path.cwd()
+        skills = discover_skills(cwd)
+        agents = discover_agents(cwd)
+        commands = discover_commands(cwd)
+        print(f'## Unused tools — available but not invoked in {label}')
+        print()
+        print(f'_Discovered from `~/.claude/`, plugin cache, and `{cwd}/.claude/`._')
+        print()
+        render_unused_table(skills, agents, commands, counts)
+    else:
+        print('_Pass `--unused` to also list available tools that were not invoked in this period._')
 
     return 0
 
