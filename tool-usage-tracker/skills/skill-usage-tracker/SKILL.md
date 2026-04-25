@@ -36,6 +36,6 @@ Pass the script's stdout through to the user as-is — it's already formatted ma
 - Logs live at `~/.claude/local-telemetry/tools/YYYY-MM.jsonl` and are local to the user's machine.
 - If the script reports no logs found, the hooks haven't captured anything yet — tell the user to invoke a Skill, Agent, or slash command and try again.
 - The report shows three kinds:
-  - `skill` — `Skill` tool calls (Claude decides to invoke a skill mid-conversation)
-  - `agent` — `Agent`/`Task` tool calls (subagent dispatch)
-  - `slash-cmd` — slash commands typed by the user (`/lnb-review-pr`, `/plugin`, etc.) — these expand inline and don't go through the Skill tool, so they're tracked separately by a `UserPromptSubmit` hook.
+  - `skill` — `Skill` tool calls captured by `PreToolUse` (Claude invokes a skill mid-conversation).
+  - `agent` — subagent runs captured by `SubagentStop` after each subagent finishes. Covers both built-in subagent types (`Explore`, `general-purpose`, `Plan`...) and custom project-defined ones (`.claude/agents/*.md`). `SubagentStop` is more reliable than the `PreToolUse` hook on the `Agent` tool, which empirically misses custom subagents.
+  - `slash-cmd` — slash commands typed by the user (`/lnb-review-pr`, `/plugin`...) captured by `UserPromptSubmit`. Slash commands expand inline and don't go through the `Skill` tool.

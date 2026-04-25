@@ -1,9 +1,9 @@
 {
-  "description": "Log Skill, Agent, and slash-command invocations to a local JSONL file.",
+  "description": "Log Skill, subagent, and slash-command invocations to a local JSONL file.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Skill|Agent|Task",
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
@@ -19,6 +19,17 @@
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/log-slash-command.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/log-subagent-stop.py\"",
             "timeout": 5
           }
         ]

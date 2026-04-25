@@ -9,7 +9,7 @@ Built because Claude's built-in analytics dashboards (Team / Enterprise) don't b
 Three things get tracked, all to one local JSONL file:
 
 - **`Skill` tool calls** — when Claude decides to invoke a skill mid-conversation. Captured by a `PreToolUse` hook.
-- **`Agent` / `Task` tool calls** — subagent dispatches. Same `PreToolUse` hook.
+- **Subagent runs** (built-in `Explore`/`Plan`/`general-purpose` and custom `.claude/agents/*.md`). Captured by a `SubagentStop` hook that fires once per subagent completion. More reliable than `PreToolUse` on the `Agent` tool, which empirically misses custom subagents.
 - **Slash commands** typed by you (`/lnb-review-pr`, `/plugin`, etc.) — these expand inline and don't go through the Skill tool, so they're caught by a separate `UserPromptSubmit` hook.
 
 All three append to:
@@ -77,7 +77,7 @@ Each line is one invocation. Three shapes:
 
 ```json
 {"ts":"...","tool":"Skill","skill":"lnb-build-frontend","subagent":null,"slash_command":null, ...}
-{"ts":"...","tool":"Agent","skill":null,"subagent":"Explore","slash_command":null, ...}
+{"ts":"...","tool":"SubagentStop","skill":null,"subagent":"Explore","slash_command":null,"stop_reason":"completed", ...}
 {"ts":"...","tool":"SlashCommand","skill":null,"subagent":null,"slash_command":"lnb-review-pr", ...}
 ```
 
