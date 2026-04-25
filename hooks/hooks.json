@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "${CLAUDE_PLUGIN_ROOT}/bin/log-tool-usage.sh",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/log-tool-usage.py\"",
             "timeout": 5
           }
         ]

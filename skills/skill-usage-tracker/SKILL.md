@@ -12,7 +12,7 @@ Aggregates the JSONL files written by the `tool-usage-tracker` plugin's PreToolU
 Run the bundled report script with the requested period:
 
 ```bash
-${CLAUDE_PLUGIN_ROOT}/bin/report.sh [period]
+python3 "${CLAUDE_PLUGIN_ROOT}/bin/report.py" [period]
 ```
 
 Where `period` is one of:
@@ -27,9 +27,9 @@ Pass the script's stdout through to the user as-is — it's already formatted ma
 
 ## Examples
 
-- "show me a usage report" → `report.sh 30d`
-- "what skills did I use this week?" → `report.sh 7d`
-- "top skills all-time" → `report.sh all`
+- "show me a usage report" → `report.py 30d`
+- "what skills did I use this week?" → `report.py 7d`
+- "top skills all-time" → `report.py all`
 
 ## Notes
 

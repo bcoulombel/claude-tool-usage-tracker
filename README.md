@@ -70,9 +70,10 @@ At ~100 tool calls/day this comes out to roughly 1 MB/month — negligible. No r
 
 ## Requirements
 
-- macOS or Linux
-- `jq` on your `PATH` (used by both the logger and the report script)
+- macOS or Linux with `python3` on `PATH` (built into macOS; standard on most Linux distros)
 - Claude Code with plugin support
+
+No package installs needed — everything is stdlib Python.
 
 ## Uninstall
 
