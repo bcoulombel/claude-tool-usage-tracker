@@ -1,6 +1,6 @@
 ---
 name: skill-usage-tracker
-description: Report on Skill and Agent (subagent/Task) tool usage tracked by the tool-usage-tracker plugin. Use when the user asks for a usage report, "top skills", or activity over a period (all-time, last 30 days, last 7 days).
+description: Report on Skill, Agent, and slash-command usage tracked by the tool-usage-tracker plugin. Use when the user asks for a usage report, "top skills", or activity over a period (all-time, last 30 days, last 7 days).
 ---
 
 # skill-usage-tracker
@@ -34,5 +34,8 @@ Pass the script's stdout through to the user as-is — it's already formatted ma
 ## Notes
 
 - Logs live at `~/.claude/local-telemetry/tools/YYYY-MM.jsonl` and are local to the user's machine.
-- If the script reports no logs found, the hook hasn't captured anything yet — tell the user to invoke a Skill or Agent and try again.
-- The report shows three kinds: `skill` (Skill tool calls), `agent` (Task/subagent calls), `other` (shouldn't appear unless the matcher is changed).
+- If the script reports no logs found, the hooks haven't captured anything yet — tell the user to invoke a Skill, Agent, or slash command and try again.
+- The report shows three kinds:
+  - `skill` — `Skill` tool calls (Claude decides to invoke a skill mid-conversation)
+  - `agent` — `Agent`/`Task` tool calls (subagent dispatch)
+  - `slash-cmd` — slash commands typed by the user (`/lnb-review-pr`, `/plugin`, etc.) — these expand inline and don't go through the Skill tool, so they're tracked separately by a `UserPromptSubmit` hook.

@@ -1,12 +1,24 @@
 {
-  "description": "Append every tool call to a local JSONL log. Reports filter to Skill/Agent at query time.",
+  "description": "Log Skill, Agent, and slash-command invocations to a local JSONL file.",
   "hooks": {
     "PreToolUse": [
       {
+        "matcher": "Skill|Agent|Task",
         "hooks": [
           {
             "type": "command",
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/log-tool-usage.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}/bin/log-slash-command.py\"",
             "timeout": 5
           }
         ]

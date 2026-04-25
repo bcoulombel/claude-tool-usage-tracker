@@ -49,7 +49,9 @@ def main(argv):
                     continue
                 if cutoff is not None and (entry.get('ts') or '') < cutoff:
                     continue
-                if entry.get('skill'):
+                if entry.get('slash_command'):
+                    name, kind = entry['slash_command'], 'slash-cmd'
+                elif entry.get('skill'):
                     name, kind = entry['skill'], 'skill'
                 elif entry.get('subagent'):
                     name, kind = entry['subagent'], 'agent'

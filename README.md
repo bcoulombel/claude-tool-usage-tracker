@@ -6,13 +6,19 @@ Built because Claude's built-in analytics dashboards (Team / Enterprise) don't b
 
 ## What it does
 
-- **PreToolUse hook** matching `Skill|Task` appends one JSONL line per invocation to:
-  ```
-  ~/.claude/local-telemetry/tools/YYYY-MM.jsonl
-  ```
-  One file per month. Plain text. Stays on your machine — never uploaded.
+Three things get tracked, all to one local JSONL file:
 
-- **`skill-usage-tracker` skill** runs an aggregation script and prints a markdown table grouped by name with counts. Three preset periods: all-time, last 30 days, last 7 days.
+- **`Skill` tool calls** — when Claude decides to invoke a skill mid-conversation. Captured by a `PreToolUse` hook.
+- **`Agent` / `Task` tool calls** — subagent dispatches. Same `PreToolUse` hook.
+- **Slash commands** typed by you (`/lnb-review-pr`, `/plugin`, etc.) — these expand inline and don't go through the Skill tool, so they're caught by a separate `UserPromptSubmit` hook.
+
+All three append to:
+```
+~/.claude/local-telemetry/tools/YYYY-MM.jsonl
+```
+One file per month. Plain text. Stays on your machine — never uploaded.
+
+The bundled **`skill-usage-tracker` skill** runs an aggregation script and prints a markdown table grouped by name with counts. Three preset periods: all-time, last 30 days, last 7 days.
 
 ## Install
 
@@ -67,10 +73,12 @@ _Total invocations: 187 — source: /Users/you/.claude/local-telemetry/tools_
     └── ...
 ```
 
-Each line is one tool call:
+Each line is one invocation. Three shapes:
 
 ```json
-{"ts":"2026-04-25T12:34:56Z","cwd":"/path/to/project","session_id":"...","tool":"Skill","skill":"lnb-build-frontend","subagent":null,"description":null}
+{"ts":"...","tool":"Skill","skill":"lnb-build-frontend","subagent":null,"slash_command":null, ...}
+{"ts":"...","tool":"Agent","skill":null,"subagent":"Explore","slash_command":null, ...}
+{"ts":"...","tool":"SlashCommand","skill":null,"subagent":null,"slash_command":"lnb-review-pr", ...}
 ```
 
 At ~100 tool calls/day this comes out to roughly 1 MB/month — negligible. No rotation needed; old months are kept indefinitely so all-time reports work.
