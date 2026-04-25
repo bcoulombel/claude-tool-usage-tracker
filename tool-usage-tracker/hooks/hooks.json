@@ -1,9 +1,8 @@
 {
-  "description": "Append every Skill and Agent (Task) tool call to a local JSONL log.",
+  "description": "Append every tool call to a local JSONL log. Reports filter to Skill/Agent at query time.",
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Skill|Task|Agent",
         "hooks": [
           {
             "type": "command",
