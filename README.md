@@ -1,4 +1,4 @@
-# claude-tool-usage-tracker
+# tool-usage-tracker
 
 A small Claude Code plugin that logs every `Skill` and `Agent` (subagent/Task) tool invocation to a local JSONL file, and ships a skill that turns the log into an on-demand markdown report.
 
@@ -26,7 +26,16 @@ Verify with:
 /plugin list
 ```
 
-To update later: `/plugin marketplace update bcoulombel` then `/plugin install tool-usage-tracker@bcoulombel` again.
+To update later: 
+
+```
+/plugin marketplace update bcoulombel
+/plugin uninstall tool-usage-tracker@bcoulombel
+/plugin install tool-usage-tracker@bcoulombel
+/reload-plugins
+```
+
+You may need to restart Claude code to use the latest version and not a cache version.
 
 ## Use
 
@@ -133,7 +142,7 @@ If `python3` is missing, the hook fails silently and your tool calls keep workin
 ## Uninstall
 
 ```
-/plugin uninstall tool-usage-tracker
+/plugin uninstall tool-usage-tracker@bcoulombel
 ```
 
 Logs are not deleted automatically. If you want to wipe them:
